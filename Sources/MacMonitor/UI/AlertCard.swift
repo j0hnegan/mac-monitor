@@ -23,9 +23,7 @@ struct AlertCard: View {
 
                 HStack {
                     if let primary = alert.fixes.first {
-                        Button(primary.title) { onFix(primary) }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+                        IconButton(title: primary.title, help: primary.title) { onFix(primary) }
                     }
                     Spacer()
                     overflowMenu

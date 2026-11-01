@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// A button on a soft rounded background that brightens on hover, like toolbar buttons in Control Center.
-/// Icon-only unless given a title.
+/// Shows an icon, a title, or both.
 struct IconButton: View {
-    let systemImage: String
+    var systemImage: String? = nil
     var title: String? = nil
     let help: String
     let action: () -> Void
@@ -12,8 +12,10 @@ struct IconButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: systemImage)
-                    .fontWeight(.semibold)
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .fontWeight(.semibold)
+                }
                 if let title { Text(title) }
             }
             .font(.system(size: 12))
