@@ -36,7 +36,7 @@ final class PanelController {
         panel.level = .popUpMenu
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isMovable = false
-        panel.contentView = Self.glassBackground(around: hosting)
+        panel.contentView = Self.glassBackground(around: hosting, cornerRadius: Self.cornerRadius)
     }
 
     func toggle(below button: NSStatusBarButton) {
@@ -118,7 +118,7 @@ final class PanelController {
     /// so it's looked up at runtime; older systems get the standard popover blur instead.
     /// Both sit in a rounded, clipped container: the window shadow is traced from the window's shape,
     /// and without the clip it came out as a square outline around the rounded glass.
-    private static func glassBackground(around content: NSView) -> NSView {
+    static func glassBackground(around content: NSView, cornerRadius: CGFloat) -> NSView {
         let background: NSView
         if let glassClass = NSClassFromString("NSGlassEffectView") as? NSView.Type {
             background = glassClass.init(frame: .zero)
@@ -159,6 +159,6 @@ private final class SizeReportingHostingView: NSHostingView<AnyView> {
 }
 
 /// Borderless panels can't become key by default, which would break buttons, menus, and alerts.
-private final class KeyablePanel: NSPanel {
+final class KeyablePanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }

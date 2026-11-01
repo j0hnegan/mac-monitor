@@ -23,6 +23,16 @@ struct SettingsView: View {
                 Text("Hidden vitals don't affect the menu bar icon.")
             }
 
+            Section {
+                Toggle("Pop up with a sound for new alerts", isOn: $engine.preferences.popUpAlerts)
+                Toggle("Restart stuck apps automatically", isOn: $engine.preferences.autoFixStuckApps)
+                    .disabled(!engine.preferences.popUpAlerts)
+            } header: {
+                Text("Pop-ups")
+            } footer: {
+                Text("Only apps you're not using, after a 10-second countdown you can stop.")
+            }
+
             Section("Alert me when…") {
                 ForEach(Alert.Kind.allCases, id: \.self) { kind in
                     Toggle(kind.label, isOn: shown(kind, in: \.disabledAlerts))

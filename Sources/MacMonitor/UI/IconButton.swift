@@ -16,7 +16,7 @@ struct IconButton: View {
                     Image(systemName: systemImage)
                         .fontWeight(.semibold)
                 }
-                if let title { Text(title) }
+                if let title { Text(title).lineLimit(1).fixedSize() }
             }
             .font(.system(size: 12))
             .padding(.horizontal, title == nil ? 0 : 8)

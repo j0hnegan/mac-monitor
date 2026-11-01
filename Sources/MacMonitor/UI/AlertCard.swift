@@ -41,7 +41,8 @@ struct AlertCard: View {
             ForEach(alert.fixes.dropFirst()) { fix in
                 Button(fix.title) { onFix(fix) }
             }
-            if alert.fixes.count > 1 { Divider() }
+            Button("Copy for Claude") { ClaudePrompt.copy(for: alert) }
+            Divider()
             Button("Snooze for 1 Day") { engine.snooze(alert, until: Date().addingTimeInterval(86_400)) }
             Button("Snooze for 1 Week") { engine.snooze(alert, until: Date().addingTimeInterval(7 * 86_400)) }
             if !alert.fixes.contains(where: { $0.id == "acknowledge" }) {

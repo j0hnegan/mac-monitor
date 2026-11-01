@@ -23,6 +23,8 @@ struct Thresholds {
     var memoryHogGB = 6.0
     var runawayCPU = 0.50
     var runawayWindow: TimeInterval = 10 * 60
+    /// Half a core can be real background work (an export, a build); a full core this long rarely is.
+    var autoRestartCPU = 0.95
     var memoryPressureWindow: TimeInterval = 2 * 60
     var uptimeAlertDays = 14.0
     var lowBatteryCharge = 15

@@ -52,7 +52,8 @@ final class AlertEvaluator {
                     title: "\(app.name) is using \(Format.share(share)) your memory",
                     detail: "Your Mac is short on memory, which slows everything down. \(remedy)",
                     fixes: appFixes(app),
-                    notify: memoryHealth == .red,
+                    // One pop-up for the biggest app; the rest wait in the panel.
+                    notify: memoryHealth == .red && app.id == sorted.first?.id,
                     app: app.name
                 )
             }
@@ -76,10 +77,11 @@ final class AlertEvaluator {
                 subject: String(process.pid),
                 severity: .amber,
                 title: "\(app.name) is stuck using a lot of CPU",
-                detail: "\(process.name) has used \(Format.percent(process.cpu)) of a core for \(Int(duration / 60)) min. It's probably stuck.",
+                detail: "It's been working your processor hard for \(Int(duration / 60)) min, draining your battery and heating your Mac. That usually means it's stuck in a loop; \(app.bundleURL == nil ? "force quitting" : "a restart") fixes it.",
                 fixes: fixes,
                 notify: true,
-                app: app.name
+                app: app.name,
+                autoFixable: app.bundleURL != nil && process.cpu >= t.autoRestartCPU
             )
         }
     }

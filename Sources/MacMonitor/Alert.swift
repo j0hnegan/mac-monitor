@@ -36,6 +36,8 @@ struct Alert: Identifiable {
     var notify = false
     /// Apps can be put on the ignore list from their alert's overflow menu.
     var app: String? = nil
+    /// The first fix may run on its own after a countdown, if the user allows it.
+    var autoFixable = false
 
     var id: String { "\(kind.rawValue):\(subject)" }
 }

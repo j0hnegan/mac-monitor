@@ -32,6 +32,10 @@ final class MonitorEngine {
 
     var thresholds = Thresholds()
 
+    /// Called once for each new alert worth interrupting for, when pop-ups are on.
+    @ObservationIgnored var onNewAlert: ((Alert) -> Void)?
+    @ObservationIgnored private var announced: Set<String> = []
+
     var preferences = Preferences.load() {
         didSet { preferences.save() }
     }
@@ -77,7 +81,16 @@ final class MonitorEngine {
         let snapshot = SystemSnapshot(memory: memory, processes: processes, groups: groups, battery: battery,
                                       disk: disk, uptime: uptime, thermal: thermal, vitals: vitals)
         alerts = evaluator.evaluate(snapshot, thresholds, ignoredApps: preferences.ignoredApps)
+        announceNewAlerts()
         StateFile(snapshot, cpu: cpu, alerts: alerts, overall: worstHealth, engine: self).write()
+    }
+
+    /// Forgets alerts that went away, so the same problem coming back pops up again.
+    private func announceNewAlerts() {
+        let fresh = visibleAlerts.filter { $0.notify && !announced.contains($0.id) }
+        announced = announced.union(fresh.map(\.id)).intersection(alerts.map(\.id))
+        guard preferences.popUpAlerts else { return }
+        fresh.forEach { onNewAlert?($0) }
     }
 
     // MARK: - Alert actions
