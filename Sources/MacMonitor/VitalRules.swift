@@ -2,8 +2,8 @@ import Foundation
 
 /// Color and alert thresholds from PRD §6–7. Will become editable in Settings.
 struct Thresholds {
-    /// Writing this much to swap within `swapWindow` means memory is short now, not just earlier.
-    var activeSwapBytes: UInt64 = 100 * 1_048_576
+    /// Swap growing this much within `swapWindow` means memory is short now, not just earlier.
+    var swapGrowthBytes: UInt64 = 100 * 1_048_576
     var swapWindow: TimeInterval = 5 * 60
     var swapRedGB = 6.0
     /// Swap worth mentioning when memory is fine, and worth worrying about when memory is nearly full.
@@ -32,7 +32,7 @@ struct Thresholds {
 enum VitalRules {
     static func memory(_ m: MemoryReading, groups: [AppGroup], _ t: Thresholds) -> Vital {
         let swapGB = Format.gigabytes(m.swapUsed)
-        let swapping = m.recentSwapOut >= t.activeSwapBytes
+        let swapping = m.swapGrowth >= t.swapGrowthBytes
         let full = Double(m.used) / Double(m.total) >= t.nearlyFull && swapGB >= t.notableSwapGB
         // Judged by what's happening now, not by swap size alone: swap lingers for hours after
         // a squeeze (or after waking from hibernation) while the Mac has plenty of room.
