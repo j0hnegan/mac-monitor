@@ -4,7 +4,7 @@
 
 ## 1. Summary
 
-A native macOS menu bar app that tells John, at a glance, whether his MacBook is healthy — and when it isn't, says what's wrong in one sentence and offers one button that fixes it. It also exposes a local MCP server so Claude (Claude Code or the Claude app) can read the same state and run the same fixes by conversation.
+A native macOS menu bar app that tells John, at a glance, whether his MacBook is healthy — and when it isn't, says what's wrong in one sentence and offers one button that fixes it. It also exposes a local, read-only MCP server so Claude (Claude Code or the Claude app) can see the same state and help explain alerts that aren't a one-button fix.
 
 John is a product designer, not a sysadmin. Raw metrics ("10 GB", "swap") mean little on their own. Every number the app shows must come with a color and a short line of context. The product is the **verdict + the fix**, not the dashboard.
 
@@ -19,7 +19,7 @@ A manual audit on John's M2 Max (32 GB RAM, macOS 27) found: 41 days without a r
 - Actionable alerts: each = one sentence + one primary fix button (+ snooze).
 - Proactive notifications for things worth interrupting for, with the fix button inside the notification.
 - Detect *changes* John would never notice (new startup items, runaway processes, junk accumulating).
-- MCP server in v1 so Claude can query state and trigger fixes.
+- Read-only MCP server in v1 so Claude can look at the same state when an alert needs explaining.
 - Featherweight: the monitor must never become a hog itself.
 
 **Non-goals (v1)**
@@ -33,8 +33,8 @@ A manual audit on John's M2 Max (32 GB RAM, macOS 27) found: 41 days without a r
 - Swift + SwiftUI, `MenuBarExtra` with `.window` style. Target macOS 14+ (John runs macOS 27, Apple Silicon).
 - Unsandboxed, signed locally (Developer ID or ad-hoc). Launches at login via `SMAppService.mainApp`.
 - **Core engine** (`MonitorEngine`): collectors → evaluators → `[Vital]` + `[Alert]` state. UI, notifications, and MCP all read from it.
-- **Fix actions** (`FixAction`): a single registry of actions (quit app, restart app, clear cache, remove startup item, empty trash, restart Mac…). Buttons, notification actions, and MCP tool calls all invoke the same registry. No duplicate logic.
-- **MCP**: app hosts a local server on a Unix domain socket (or `127.0.0.1` + random token in `~/Library/Application Support/MacMonitor/`). A bundled thin CLI `macmon-mcp` speaks MCP over stdio and proxies to the app. If the app isn't running, tools return a clear "Mac Monitor isn't running" error.
+- **Fix actions** (`FixAction`): a single registry of actions (quit app, restart app, clear cache, remove startup item, empty trash, restart Mac…). Buttons and notification actions both invoke the same registry. No duplicate logic.
+- **MCP**: after every sample the app writes its state as JSON files (one per tool, owner-only) to `~/Library/Application Support/MacMonitor/state/`. A bundled CLI `macmon-mcp` speaks MCP over stdio and serves those files. Nothing listens on a socket. If the files are missing or more than 5 minutes old, tools return a clear "Mac Monitor isn't running" error.
 - Privileged operations (system-wide LaunchDaemons, `/Library` items, `pmset`) go through a standard macOS admin prompt (`AuthorizationServices` or `osascript … with administrator privileges`). Never store the password.
 
 ### Sampling budget
@@ -145,25 +145,23 @@ Each alert has: `id`, `kind`, `subject`, `severity`, `title`, `detail`, `fixes[]
 
 ## 9. MCP server (v1)
 
-Server name: `mac-monitor`. Tools:
+Server name: `mac-monitor`. **Read-only by decision:** the MCP is for understanding an alert that isn't a simple one-button fix. Claude explains and recommends; the user (or Claude with its own tools, on the user's OK) carries out the fix. Pressing the app's fix buttons over MCP wouldn't save meaningful effort.
 
 | Tool | Purpose |
 |---|---|
-| `get_vitals` | All vitals with value, color, context line |
-| `list_alerts` | Active alerts incl. id, severity, detail, available fixes, snooze state |
-| `get_top_processes` | Top N by CPU / memory, grouped by app, with raw numbers |
-| `get_startup_items` | All non-Apple startup/background items + which are new |
-| `get_cleanup_candidates` | Reclaimable items with sizes |
-| `run_fix` | `{alert_id, fix_id}` or `{action, target}` — executes via the shared FixAction registry. Destructive actions require `confirm: true` in the call. |
-| `snooze_alert` | `{alert_id, duration | "acknowledge"}` |
-| `rescan` | Force a full scan |
-| `get_snapshot` | Same markdown as "Copy for Claude" |
+| `get_vitals` | All vitals with value, color, context line, details, whether shown in the panel, plus the raw system numbers behind them |
+| `list_alerts` | All alerts incl. id, severity, detail, the fix buttons the app offers, and status (active / snoozed / acknowledged / hidden in Settings) |
+| `get_top_processes` | Top 10 apps by CPU and by memory, helper processes grouped under each app, with raw numbers, PIDs, bundle paths |
+| `get_startup_items` | (with Milestone 3) All non-Apple startup/background items + which are new |
+| `get_cleanup_candidates` | (with Milestone 3) Reclaimable items with sizes |
 
-Ship setup instructions: `claude mcp add mac-monitor -- /Applications/Mac\ Monitor.app/Contents/MacOS/macmon-mcp` and the equivalent Claude app config JSON (shown in Settings).
+Data is from the app's latest sample (every 30 s, every 4 s while the panel is open); each response says how many seconds old it is.
+
+Setup: `claude mcp add mac-monitor -- "/Applications/Mac Monitor.app/Contents/MacOS/macmon-mcp"` for Claude Code, or the equivalent entry in the Claude app's `claude_desktop_config.json`.
 
 ## 10. Companion Claude skill
 
-A separate Claude skill ("mac-checkup") lets John start a chat, invoke it, and have Claude pull `list_alerts` + `get_vitals`, explain what's going on in plain language, recommend fixes, and run them via `run_fix` on his OK. Not part of this repo's build, but the MCP tool names above are the contract — don't rename them without updating the skill.
+A separate Claude skill ("mac-checkup") lets John start a chat, invoke it, and have Claude pull `list_alerts` + `get_vitals`, explain what's going on in plain language, and recommend fixes. Not part of this repo's build, but the MCP tool names above are the contract — don't rename them without updating the skill.
 
 ## 11. Milestones
 
@@ -171,7 +169,7 @@ A separate Claude skill ("mac-checkup") lets John start a chat, invoke it, and h
 2. **Alerts + fixes**: process grouping, alert evaluators, FixAction registry, alert cards, snooze/ack, confirm sheets.
 3. **Scans**: startup item snapshot/diff, cleanup scanner, Spotlight + sleep-blocker detection.
 4. **Notifications**: actionable notifications, rate limiting, quiet hours.
-5. **MCP**: socket server in app, `macmon-mcp` stdio bridge, all tools, Settings setup panel, "Copy for Claude".
+5. **MCP**: state files written by the app, read-only `macmon-mcp` stdio server, Settings setup panel, "Copy for Claude".
 6. **Polish**: Settings window, thresholds, ignore list, self-usage readout, icon states.
 
 ## 12. Acceptance criteria
@@ -181,7 +179,7 @@ A separate Claude skill ("mac-checkup") lets John start a chat, invoke it, and h
 - Installing any app that adds a LaunchAgent produces a `new_startup_item` alert; "Remove" unloads it and moves the plist to Trash.
 - Junk cleanup confirm sheet lists every path and total size; after clearing, the alert disappears on rescan.
 - Snoozed/acknowledged alerts don't notify; ack persists across relaunch.
-- `claude mcp add …` works; from Claude Code, `list_alerts` and `run_fix` behave identically to the buttons.
+- `claude mcp add …` works; from Claude Code, `list_alerts` and `get_vitals` match what the panel shows.
 - Mac Monitor's own average CPU < 1% over an hour with panel closed.
 
 ## 13. Open questions for the builder

@@ -20,3 +20,25 @@ macOS 14 or later. Builds with the Xcode Command Line Tools (Swift 5.10+); full 
 ```
 
 The app is ad-hoc signed and registers itself to launch at login on first run (toggle it in Settings).
+
+## Ask Claude about it (MCP)
+
+Mac Monitor ships a read-only MCP server, so Claude can see the same vitals, alerts, and heaviest apps when you want help making sense of an alert. It can look, never act.
+
+```bash
+claude mcp add mac-monitor -- "/Applications/Mac Monitor.app/Contents/MacOS/macmon-mcp"
+```
+
+For the Claude desktop app, add this to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "mac-monitor": {
+      "command": "/Applications/Mac Monitor.app/Contents/MacOS/macmon-mcp"
+    }
+  }
+}
+```
+
+Tools: `get_vitals`, `list_alerts`, `get_top_processes`. Data comes from the app's latest check, so Mac Monitor needs to be running.

@@ -5,6 +5,7 @@ let package = Package(
     name: "MacMonitor",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(name: "MacMonitor", path: "Sources/MacMonitor")
+        .executableTarget(name: "MacMonitor", path: "Sources/MacMonitor"),
+        .executableTarget(name: "macmon-mcp", path: "Sources/macmon-mcp"),
     ]
 )

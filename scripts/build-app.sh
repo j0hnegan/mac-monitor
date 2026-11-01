@@ -11,6 +11,9 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp "$BIN/MacMonitor" "$APP/Contents/MacOS/MacMonitor"
+cp "$BIN/macmon-mcp" "$APP/Contents/MacOS/macmon-mcp"
+# Sign the helper first: signing the bundle checks that everything inside it is already signed.
+codesign --force --sign - "$APP/Contents/MacOS/macmon-mcp"
 codesign --force --sign - "$APP"
 
 if [[ "${1:-}" == "--install" ]]; then

@@ -61,9 +61,11 @@ final class MonitorEngine {
         let uptime = UptimeCollector.read()
         let thermal = ProcessInfo.processInfo.thermalState
 
+        let cpu = cpu.read(window: thresholds.cpuWindow)
+
         var vitals = [
             VitalRules.memory(memory, groups: groups, thresholds),
-            VitalRules.cpu(cpu.read(window: thresholds.cpuWindow), groups: groups, thresholds),
+            VitalRules.cpu(cpu, groups: groups, thresholds),
         ]
         if let battery { vitals.append(VitalRules.battery(battery, thresholds)) }
         if let disk { vitals.append(VitalRules.disk(disk, thresholds)) }
@@ -74,6 +76,7 @@ final class MonitorEngine {
         let snapshot = SystemSnapshot(memory: memory, processes: processes, groups: groups, battery: battery,
                                       disk: disk, uptime: uptime, thermal: thermal, vitals: vitals)
         alerts = evaluator.evaluate(snapshot, thresholds, ignoredApps: preferences.ignoredApps)
+        StateFile(snapshot, cpu: cpu, alerts: alerts, overall: worstHealth, engine: self).write()
     }
 
     // MARK: - Alert actions

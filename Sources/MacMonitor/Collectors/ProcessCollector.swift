@@ -35,6 +35,11 @@ final class ProcessCollector {
         return Double(timebase.numer) / Double(timebase.denom)
     }()
 
+    /// A baseline scan, so the first real one can measure CPU instead of reporting 0 for everything.
+    init() {
+        _ = read()
+    }
+
     func read() -> [ProcessSample] {
         let now = Date()
         let elapsed = now.timeIntervalSince(lastScan)
