@@ -2,8 +2,13 @@ import Foundation
 
 /// Color and alert thresholds from PRD §6–7. Will become editable in Settings.
 struct Thresholds {
-    var swapAmberGB = 2.0
+    /// Writing this much to swap within `swapWindow` means memory is short now, not just earlier.
+    var activeSwapBytes: UInt64 = 100 * 1_048_576
+    var swapWindow: TimeInterval = 5 * 60
     var swapRedGB = 6.0
+    /// Swap worth mentioning when memory is fine, and worth worrying about when memory is nearly full.
+    var notableSwapGB = 2.0
+    var nearlyFull = 0.9
     var cpuAmber = 0.60
     var cpuRed = 0.85
     var cpuWindow: TimeInterval = 5 * 60
@@ -27,9 +32,13 @@ struct Thresholds {
 enum VitalRules {
     static func memory(_ m: MemoryReading, groups: [AppGroup], _ t: Thresholds) -> Vital {
         let swapGB = Format.gigabytes(m.swapUsed)
+        let swapping = m.recentSwapOut >= t.activeSwapBytes
+        let full = Double(m.used) / Double(m.total) >= t.nearlyFull && swapGB >= t.notableSwapGB
+        // Judged by what's happening now, not by swap size alone: swap lingers for hours after
+        // a squeeze (or after waking from hibernation) while the Mac has plenty of room.
         let health: Health =
-            swapGB > t.swapRedGB || m.pressure == .critical ? .red :
-            swapGB >= t.swapAmberGB || m.pressure == .warn ? .amber : .green
+            m.pressure == .critical || (m.pressure == .warn && swapGB > t.swapRedGB) ? .red :
+            m.pressure == .warn || swapping || full ? .amber : .green
 
         let usage = "\(Format.memory(m.used)) of \(Format.memory(m.total))"
         let top = groups.sorted { $0.memory > $1.memory }.prefix(3).map {
@@ -39,14 +48,19 @@ enum VitalRules {
             "Compressed \(Format.memory(m.compressed)) · Cached \(Format.memory(m.cached)) · Swap \(Format.memory(m.swapUsed))",
         ]
 
-        if swapGB >= t.swapAmberGB {
+        if swapping {
             return Vital(kind: .memory, health: health, value: "Swap \(Format.memory(m.swapUsed))",
-                         context: "Your Mac is using the disk as overflow memory, so things feel sluggish.",
+                         context: "Your Mac is moving memory to the disk right now, so things feel sluggish.",
                          details: details)
         }
         if health != .green {
             return Vital(kind: .memory, health: health, value: usage,
                          context: "Memory is tight. Quitting heavy apps will help.", details: details)
+        }
+        if swapGB >= t.notableSwapGB {
+            return Vital(kind: .memory, health: .green, value: usage,
+                         context: "Plenty of room. \(Format.memory(m.swapUsed)) left on the disk from earlier clears as apps use it, or when you restart.",
+                         details: details)
         }
         return Vital(kind: .memory, health: .green, value: usage, context: "Plenty of room.", details: details)
     }

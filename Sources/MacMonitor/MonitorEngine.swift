@@ -36,6 +36,7 @@ final class MonitorEngine {
         didSet { preferences.save() }
     }
 
+    @ObservationIgnored private let memory = MemoryCollector()
     @ObservationIgnored private let cpu = CPUCollector()
     @ObservationIgnored private let battery = BatteryCollector()
     @ObservationIgnored private let disk = DiskCollector()
@@ -53,7 +54,7 @@ final class MonitorEngine {
     }
 
     func sample() {
-        let memory = MemoryCollector.read()
+        let memory = memory.read(window: thresholds.swapWindow)
         let processes = processes.read()
         let groups = ProcessCollector.group(processes)
         let battery = battery.read()

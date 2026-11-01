@@ -74,7 +74,7 @@ Two sections only.
 
 **Vitals** — compact rows: color dot · name · value · one-line context. Examples:
 - 🟢 Memory · 21.6 of 32 GB · Plenty of room.
-- 🟠 Memory · Swap 6.1 GB · Your Mac is using the disk as overflow memory, so things feel sluggish.
+- 🟠 Memory · Swap 6.1 GB · Your Mac is moving memory to the disk right now, so things feel sluggish.
 - 🟢 CPU · 15% busy
 - 🟠 Battery · 54% · 77% health, 1,450 cycles. Can slow your Mac near empty.
 - 🟢 Disk · 522 GB free
@@ -104,7 +104,7 @@ Footer: "Copy for Claude" (copies a markdown snapshot of vitals + alerts + top p
 
 | Vital | Green | Amber | Red |
 |---|---|---|---|
-| Memory | pressure normal, swap < 2 GB | swap 2–6 GB or pressure warn | swap > 6 GB or pressure critical |
+| Memory | pressure normal and not actively swapping (leftover swap is noted, not alarmed: it lingers for hours after a squeeze or a wake from hibernation) | pressure warn, ≥ 100 MB written to swap in the last 5 min, or memory ≥ 90% used with swap ≥ 2 GB | pressure critical, or pressure warn with swap > 6 GB |
 | CPU | < 60% sustained | 60–85% for 5 min | > 85% for 5 min |
 | Battery | health ≥ 85% and charge ≥ 20% | health < 85% or condition ≠ Normal, or charge 10–20% on battery | charge < 10% on battery |
 | Disk | > 15% free | 5–15% free | < 5% free |

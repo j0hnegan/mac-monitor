@@ -44,6 +44,9 @@ struct PanelView: View {
         // Take exactly the window's height and pin content to the top, so while the window animates,
         // extra content spills off the bottom (revealed as it grows) instead of being centered.
         .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
+        // Glass alone goes hard to read over a bright, busy wallpaper or video; a window-colored
+        // tint keeps some of the glass look while steadying the contrast.
+        .background(Color(nsColor: .windowBackgroundColor).opacity(0.6))
         // The panel gives keyboard focus to its first control on open; the ring reads as a selection.
         .focusEffectDisabled()
         .alert(pendingFix?.fix.title ?? "", isPresented: Binding(

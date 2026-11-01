@@ -9,11 +9,18 @@ struct MemoryReading {
     let compressed: UInt64
     let cached: UInt64
     let swapUsed: UInt64
+    /// Bytes moved out to swap over the recent window. Swap that's already used lingers long after
+    /// a squeeze (e.g. after waking from hibernation); this says it's still happening.
+    let recentSwapOut: UInt64
     let pressure: Pressure
 }
 
-enum MemoryCollector {
-    static func read() -> MemoryReading {
+final class MemoryCollector {
+    private var history: [(date: Date, swapOuts: UInt64)] = []
+
+    /// Measured over a fixed window, not since the last sample, so the panel's faster sampling
+    /// doesn't change the verdict and one short burst doesn't flip it.
+    func read(window: TimeInterval) -> MemoryReading {
         var stats = vm_statistics64()
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size)
         _ = withUnsafeMutablePointer(to: &stats) {
@@ -26,6 +33,13 @@ enum MemoryCollector {
         // Same breakdown as Activity Monitor: used = app memory + wired + compressed.
         let appMemory = UInt64(stats.internal_page_count) - UInt64(stats.purgeable_count)
         let compressed = UInt64(stats.compressor_page_count) * page
+
+        let now = Date()
+        history.append((now, stats.swapouts))
+        // Keep the newest reading that's at least `window` old as the baseline, plus everything after it.
+        if let baseline = history.lastIndex(where: { now.timeIntervalSince($0.date) >= window }) {
+            history.removeFirst(baseline)
+        }
 
         let pressure: MemoryReading.Pressure
         switch sysctl("kern.memorystatus_vm_pressure_level", as: Int32.self) {
@@ -40,6 +54,7 @@ enum MemoryCollector {
             compressed: compressed,
             cached: (UInt64(stats.external_page_count) + UInt64(stats.purgeable_count)) * page,
             swapUsed: sysctl("vm.swapusage", as: xsw_usage.self)?.xsu_used ?? 0,
+            recentSwapOut: (stats.swapouts - history[0].swapOuts) * page,
             pressure: pressure
         )
     }
