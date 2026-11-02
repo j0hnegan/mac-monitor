@@ -21,10 +21,9 @@ struct Thresholds {
     var uptimeRedDays = 21.0
 
     var memoryHogGB = 6.0
-    var runawayCPU = 0.50
+    /// A stuck loop pins a full core; steady work below that (a music app, an export) is usually real.
+    var runawayCPU = 0.90
     var runawayWindow: TimeInterval = 10 * 60
-    /// Half a core can be real background work (an export, a build); a full core this long rarely is.
-    var autoRestartCPU = 0.95
     var memoryPressureWindow: TimeInterval = 2 * 60
     var uptimeAlertDays = 14.0
     var lowBatteryCharge = 15

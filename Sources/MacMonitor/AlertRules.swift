@@ -83,7 +83,7 @@ final class AlertEvaluator {
                 fixes: fixes,
                 notify: true,
                 app: app.name,
-                autoFixable: app.bundleURL != nil && process.cpu >= t.autoRestartCPU
+                autoFixable: app.bundleURL != nil
             )
         }
     }

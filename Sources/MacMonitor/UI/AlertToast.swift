@@ -33,8 +33,8 @@ final class AlertToastController {
             onClose: { [weak self] in self?.close() }
         )
 
-        // Only present() and fit() size the window; the hosting view would resize it from the bottom.
-        hosting.sizingOptions = []
+        // Measure the content, but let only present() and fit() size the window, as the panel does.
+        hosting.sizingOptions = [.intrinsicContentSize]
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
@@ -64,7 +64,8 @@ final class AlertToastController {
             }
         }
         NSSound(named: "Glass")?.play()
-        present()
+        // SwiftUI draws the new alert on its next pass; measured now, the view is still empty.
+        DispatchQueue.main.async { [weak self] in self?.present() }
         closeWhenResolved()
     }
 
