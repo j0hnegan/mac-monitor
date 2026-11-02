@@ -61,7 +61,9 @@ final class AlertEvaluator {
 
     private func runaways(_ s: SystemSnapshot, _ groups: [AppGroup], _ t: Thresholds) -> [Alert] {
         let now = Date()
-        let busy = s.processes.filter { $0.cpu > t.runawayCPU }
+        // macOS's own background work (photo analysis, Spotlight indexing, backups) runs hard for a
+        // while and finishes on its own; it isn't stuck, and force quitting it just restarts it.
+        let busy = s.processes.filter { $0.cpu > t.runawayCPU && !$0.path.hasPrefix("/System/") && !$0.path.hasPrefix("/usr/") }
         busySince = busy.reduce(into: [:]) { $0[$1.pid] = busySince[$1.pid] ?? now }
 
         return busy.compactMap { process in
