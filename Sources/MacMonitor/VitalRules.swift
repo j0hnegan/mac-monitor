@@ -12,6 +12,8 @@ struct Thresholds {
     var cpuAmber = 0.60
     var cpuRed = 0.85
     var cpuWindow: TimeInterval = 5 * 60
+    /// A laptop feels warm well before macOS starts slowing itself down: about a quarter of all cores, sustained.
+    var warmCPU = 0.20
     var batteryHealthAmber = 85
     var batteryChargeAmber = 20
     var batteryChargeRed = 10
@@ -127,16 +129,25 @@ enum VitalRules {
                      details: ["Last restarted \(Date(timeIntervalSinceNow: -seconds).formatted(date: .abbreviated, time: .shortened))"])
     }
 
-    static func temperature(_ state: ProcessInfo.ThermalState) -> Vital {
+    /// macOS only reports heat once it starts slowing itself down, so warmth before that is
+    /// inferred from sustained CPU use, and the row names the apps doing the work.
+    static func temperature(_ state: ProcessInfo.ThermalState, cpu: CPUReading, groups: [AppGroup], _ t: Thresholds) -> Vital {
+        let heaters = groups.sorted { $0.cpu > $1.cpu }.prefix(3).filter { $0.cpu >= 0.05 }
+        let names = ListFormatter.localizedString(byJoining: heaters.map(\.name))
+        let culprits = heaters.isEmpty ? "" : " \(names) \(heaters.count == 1 ? "is" : "are") doing most of the work; quitting what you're not using cools it down."
+        let details = heaters.map { "\($0.name) \(Format.percent($0.cpu)) of a core" }
+
         switch state {
         case .serious:
-            Vital(kind: .temperature, health: .amber, value: "Hot",
-                  context: "Your Mac is slowing itself down to cool off.")
+            return Vital(kind: .temperature, health: .amber, value: "Hot",
+                         context: "Your Mac is slowing itself down to cool off.\(culprits)", details: details)
         case .critical:
-            Vital(kind: .temperature, health: .red, value: "Very hot",
-                  context: "Your Mac is heavily throttled. Quit busy apps and give it air.")
+            return Vital(kind: .temperature, health: .red, value: "Very hot",
+                         context: "Your Mac is heavily throttled. Give it air.\(culprits)", details: details)
         default:
-            Vital(kind: .temperature, health: .green, value: "Normal")
+            guard (cpu.sustained ?? 0) >= t.warmCPU else { return Vital(kind: .temperature, health: .green, value: "Normal") }
+            return Vital(kind: .temperature, health: .green, value: "Warm",
+                         context: "Busy for the last \(Int(t.cpuWindow / 60)) min, which warms it up.\(culprits)", details: details)
         }
     }
 

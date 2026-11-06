@@ -75,7 +75,7 @@ final class MonitorEngine {
         if let battery { vitals.append(VitalRules.battery(battery, thresholds)) }
         if let disk { vitals.append(VitalRules.disk(disk, thresholds)) }
         vitals.append(VitalRules.uptime(uptime, thresholds))
-        vitals.append(VitalRules.temperature(thermal))
+        vitals.append(VitalRules.temperature(thermal, cpu: cpu, groups: groups, thresholds))
         self.vitals = vitals
 
         let snapshot = SystemSnapshot(memory: memory, processes: processes, groups: groups, battery: battery,
